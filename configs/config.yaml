@@ -1,0 +1,96 @@
+system:
+  name: CSI-Sentinel
+  version: 5.0.0
+  device_id: sentinel-001
+
+network:
+  udp_host: 0.0.0.0
+  udp_port: 5500
+  buffer_size: 2048
+
+csi:
+  num_subcarriers: 64
+  num_antennas: 1
+  sample_rate: 200
+  window_size: 200
+  hop_size: 50
+  fft_size: 256
+
+dsp:
+  enable_phase_sanitization: true
+  enable_amplitude_calibration: true
+  hampel_window: 5
+  hampel_threshold: 3.0
+  butterworth_order: 4
+  lowpass_cutoff: 80.0
+  highpass_cutoff: 0.3
+
+spectrogram:
+  n_fft: 256
+  hop_length: 16
+  n_mels: 128
+  fmin: 0.1
+  fmax: 100.0
+  power: 2.0
+  normalize: true
+
+model:
+  rf_encoder:
+    input_channels: 1
+    base_channels: 64
+    num_blocks: 4
+    embedding_dim: 512
+    dropout: 0.1
+
+  text_encoder:
+    model_name: openai/clip-vit-base-patch32
+    embedding_dim: 512
+    freeze: true
+
+  wiclip:
+    temperature: 0.07
+    projection_dim: 256
+
+  diffusion:
+    num_timesteps: 1000
+    beta_start: 0.0001
+    beta_end: 0.02
+    unet_channels: [64, 128, 256, 512]
+    attention_resolutions: [16, 8]
+
+training:
+  batch_size: 32
+  learning_rate: 0.0001
+  weight_decay: 0.01
+  num_epochs: 100
+  warmup_epochs: 5
+  gradient_clip: 1.0
+  mixed_precision: true
+
+  augmentation:
+    time_mask_max: 30
+    freq_mask_max: 20
+    noise_std: 0.02
+    scale_range: [0.8, 1.2]
+
+inference:
+  confidence_threshold: 0.7
+  smoothing_window: 5
+  alert_cooldown: 10.0
+
+activities:
+  - walk
+  - run
+  - sit
+  - stand
+  - fall
+  - lie_down
+  - wave
+  - jump
+  - crouch
+  - empty
+
+logging:
+  level: INFO
+  save_dir: logs
+  tensorboard: true
