@@ -1,13 +1,16 @@
+import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from typing import Optional, Tuple, Dict, List, Union
+from typing import Callable, Optional, Tuple, Dict, List, Union
 from collections import deque
 from pathlib import Path
 
 from .wi_clip import WiCLIP
 from .classifier import ActivityClassifier
+
+logger = logging.getLogger(__name__)
 
 
 class InferenceEngine:
@@ -40,7 +43,7 @@ class InferenceEngine:
         device: Optional[torch.device] = None,
         **kwargs
     ) -> "InferenceEngine":
-        checkpoint = torch.load(checkpoint_path, map_location="cpu")
+        checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
 
         if model_type == "wiclip":
             model = WiCLIP()
@@ -187,9 +190,9 @@ class StreamingInference:
 
         self._spectrogram_buffer = deque(maxlen=buffer_size)
         self._last_alert_time = 0.0
-        self._alert_callbacks: List[callable] = []
+        self._alert_callbacks: List[Callable[[str, float, float], None]] = []
 
-    def register_alert_callback(self, callback: callable) -> None:
+    def register_alert_callback(self, callback: Callable[[str, float, float], None]) -> None:
         self._alert_callbacks.append(callback)
 
     def process_frame(
@@ -218,8 +221,8 @@ class StreamingInference:
         for callback in self._alert_callbacks:
             try:
                 callback(activity, confidence, timestamp)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error(f"Alert callback failed: {e}")
 
     def reset(self) -> None:
         self._spectrogram_buffer.clear()

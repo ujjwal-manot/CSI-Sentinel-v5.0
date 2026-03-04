@@ -81,10 +81,10 @@ class WiCLIP(nn.Module):
         activities = self.text_encoder.activity_list
 
         if self._cached_text_embeddings is None or self._cached_activities != activities:
-            self._cached_activities = activities
+            self._cached_activities = activities.copy()
             with torch.no_grad():
                 self._cached_text_embeddings = self.encode_text(
-                    [self.text_encoder._activity_prompts[a] for a in activities]
+                    self.text_encoder.get_all_activity_prompts()
                 )
 
         return self._cached_text_embeddings.to(device)
@@ -100,7 +100,7 @@ class WiCLIP(nn.Module):
             rf_embeddings = self.encode_rf(spectrograms)
 
             if activities is not None:
-                prompts = [self.text_encoder._activity_prompts.get(a, f"a person performing {a}") for a in activities]
+                prompts = [self.text_encoder.get_activity_prompt(a) for a in activities]
                 text_embeddings = self.encode_text(prompts)
             else:
                 activities = self.text_encoder.activity_list

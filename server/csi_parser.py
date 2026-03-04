@@ -1,7 +1,10 @@
 import struct
+import logging
 import numpy as np
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -39,10 +42,11 @@ class CSIParser:
     HEADER_FORMAT = "<HBBIHBBBBH"
     HEADER_SIZE = struct.calcsize(HEADER_FORMAT)
     MAGIC_VALUE = 0xC510
+    MAX_TRACKED_DEVICES = 256
 
     def __init__(self, num_subcarriers: int = 64):
         self.num_subcarriers = num_subcarriers
-        self._last_sequence = {}
+        self._last_sequence: Dict[int, int] = {}
         self._dropped_packets = 0
 
     def parse(self, data: bytes) -> Optional[CSIPacket]:
@@ -72,6 +76,10 @@ class CSIParser:
             expected = (self._last_sequence[device_id] + 1) & 0xFFFF
             if sequence != expected and sequence != 0xFFFF:
                 self._dropped_packets += (sequence - expected) & 0xFFFF
+
+        if len(self._last_sequence) >= self.MAX_TRACKED_DEVICES:
+            oldest_key = next(iter(self._last_sequence))
+            del self._last_sequence[oldest_key]
         self._last_sequence[device_id] = sequence
 
         if sequence == 0xFFFF:
@@ -86,11 +94,10 @@ class CSIParser:
         csi_bytes = data[csi_data_start:csi_data_start + csi_data_length]
         csi_raw = np.frombuffer(csi_bytes, dtype=np.int8)
 
-        csi_complex = np.zeros(num_subcarriers, dtype=np.complex64)
-        for i in range(num_subcarriers):
-            real = float(csi_raw[2 * i])
-            imag = float(csi_raw[2 * i + 1])
-            csi_complex[i] = complex(real, imag)
+        real_parts = csi_raw[0::2].astype(np.float32)
+        imag_parts = csi_raw[1::2].astype(np.float32)
+        csi_complex = real_parts + 1j * imag_parts
+        csi_complex = csi_complex.astype(np.complex64)
 
         return CSIPacket(
             magic=magic,
@@ -106,7 +113,7 @@ class CSIParser:
             csi_complex=csi_complex
         )
 
-    def parse_batch(self, data_list: list) -> list:
+    def parse_batch(self, data_list: List[bytes]) -> List[CSIPacket]:
         packets = []
         for data in data_list:
             packet = self.parse(data)
@@ -118,6 +125,6 @@ class CSIParser:
     def dropped_packets(self) -> int:
         return self._dropped_packets
 
-    def reset_stats(self):
+    def reset_stats(self) -> None:
         self._last_sequence.clear()
         self._dropped_packets = 0

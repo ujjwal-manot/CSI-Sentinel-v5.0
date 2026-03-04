@@ -186,7 +186,7 @@ def run_generate(config: Config, num_samples: int, activity: str):
         logger.error("No diffusion model found. Train one first.")
         return
 
-    checkpoint = torch.load(checkpoint_path, map_location=device)
+    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
 
     unet = DiffusionUNet(in_channels=3, out_channels=3, num_classes=len(config.activities))
     model = CSIDiffusion(unet=unet)

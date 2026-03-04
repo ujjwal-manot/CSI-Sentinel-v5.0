@@ -440,12 +440,16 @@ class CSIDiffusion(nn.Module):
             predicted_noise = self.unet(x, t_batch, class_labels)
 
             alpha = self.alphas_cumprod[t]
-            alpha_prev = self.alphas_cumprod[timesteps[i + 1]] if i < len(timesteps) - 1 else torch.tensor(1.0)
+            if i < len(timesteps) - 1:
+                alpha_prev = self.alphas_cumprod[timesteps[i + 1]]
+            else:
+                alpha_prev = torch.tensor(1.0, device=device)
 
-            sigma = eta * torch.sqrt((1 - alpha_prev) / (1 - alpha) * (1 - alpha / alpha_prev))
+            alpha_ratio = (1 - alpha_prev) / (1 - alpha + 1e-8) * (1 - alpha / (alpha_prev + 1e-8))
+            sigma = eta * torch.sqrt(torch.clamp(alpha_ratio, min=0))
 
-            pred_x0 = (x - torch.sqrt(1 - alpha) * predicted_noise) / torch.sqrt(alpha)
-            dir_xt = torch.sqrt(1 - alpha_prev - sigma ** 2) * predicted_noise
+            pred_x0 = (x - torch.sqrt(1 - alpha) * predicted_noise) / (torch.sqrt(alpha) + 1e-8)
+            dir_xt = torch.sqrt(torch.clamp(1 - alpha_prev - sigma ** 2, min=0)) * predicted_noise
 
             if sigma > 0:
                 noise = torch.randn_like(x)

@@ -123,6 +123,12 @@ class TextEncoder(nn.Module):
     def add_activity_prompt(self, activity: str, prompt: str) -> None:
         self._activity_prompts[activity] = prompt
 
+    def get_activity_prompt(self, activity: str) -> str:
+        return self._activity_prompts.get(activity, f"a person performing {activity}")
+
+    def get_all_activity_prompts(self) -> List[str]:
+        return [self._activity_prompts[a] for a in self._activity_prompts]
+
     @property
     def activity_list(self) -> List[str]:
         return list(self._activity_prompts.keys())

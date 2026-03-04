@@ -1,8 +1,9 @@
+import logging
 import numpy as np
 import threading
 import queue
 import time
-from typing import Callable, Optional, List, Tuple
+from typing import Any, Callable, Optional, List, Tuple
 from collections import deque
 from dataclasses import dataclass
 
@@ -10,6 +11,8 @@ from .udp_receiver import UDPReceiver
 from .csi_parser import CSIPacket
 from .dsp_pipeline import DSPPipeline, DSPConfig
 from .spectrogram import SpectrogramGenerator
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -72,9 +75,9 @@ class RealtimeProcessor:
 
         self._last_window_time = 0.0
         self._frames_processed = 0
-        self._inference_model = None
+        self._inference_model: Optional[Any] = None
 
-    def set_inference_model(self, model) -> None:
+    def set_inference_model(self, model: Any) -> None:
         self._inference_model = model
 
     def register_frame_callback(self, callback: Callable[[ProcessedFrame], None]) -> None:
@@ -133,16 +136,16 @@ class RealtimeProcessor:
             for callback in self._frame_callbacks:
                 try:
                     callback(processed)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.error(f"Frame callback failed: {e}")
 
             if self._inference_model is not None:
                 result = self._run_inference(processed)
                 if result and self._inference_callback:
                     try:
                         self._inference_callback(result)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.error(f"Inference callback failed: {e}")
 
     def _process_window(self, packets: List[CSIPacket]) -> Optional[ProcessedFrame]:
         if not packets:
@@ -201,7 +204,8 @@ class RealtimeProcessor:
                 confidence=confidence if isinstance(confidence, float) else confidence.item(),
                 all_scores=all_scores
             )
-        except Exception:
+        except Exception as e:
+            logger.error(f"Inference failed: {e}")
             return None
 
     def get_latest_frame(self) -> Optional[ProcessedFrame]:

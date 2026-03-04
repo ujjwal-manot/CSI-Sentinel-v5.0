@@ -1,8 +1,11 @@
+import logging
 import socket
 import threading
 import queue
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 from .csi_parser import CSIParser, CSIPacket
+
+logger = logging.getLogger(__name__)
 
 
 class UDPReceiver:
@@ -22,7 +25,7 @@ class UDPReceiver:
         self._thread: Optional[threading.Thread] = None
         self._packet_queue = queue.Queue(maxsize=queue_size)
         self._parser = CSIParser()
-        self._callbacks: list = []
+        self._callbacks: List[Callable[[CSIPacket], None]] = []
 
         self._packets_received = 0
         self._bytes_received = 0
@@ -70,8 +73,8 @@ class UDPReceiver:
                     for callback in self._callbacks:
                         try:
                             callback(packet)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.error(f"Callback failed: {e}")
 
             except socket.timeout:
                 continue
@@ -91,7 +94,7 @@ class UDPReceiver:
         except queue.Empty:
             return None
 
-    def get_packets(self, max_count: int = 100) -> list:
+    def get_packets(self, max_count: int = 100) -> List[CSIPacket]:
         packets = []
         while len(packets) < max_count:
             try:
