@@ -1884,7 +1884,6 @@ If you use this project in your research, please cite:
 
 **Ujjwal Manot**
 
-- Role: President, Resonance ECE
 - Domain: Non-Line-of-Sight Semantic Wireless Sensing
 - GitHub: [@ujjwal-manot](https://github.com/ujjwal-manot)
 
