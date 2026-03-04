@@ -161,7 +161,6 @@ inference:
 ## Author
 
 **Ujjwal Manot**
-President, Resonance ECE
 Domain: Non-Line-of-Sight Semantic Wireless Sensing
 
 ## License
